@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<script type="module">
+const workletCode = `
+  class DSPProcessor extends AudioWorkletProcessor {
+    constructor() {
+      super();
+      this.t = 0; // samples passed
+      this.port.onmessage = (e) => {
+        const key = Object.keys(e.data)[0];
+        const value = e.data[key];
+        switch (key) {
+          case "webassembly":
+            console.info('Began loading WebAssembly into the AudioWorkletProcessor...');
+            WebAssembly.instantiate(value, {
+              environment: { SAMPLERATE: globalThis.sampleRate },
+              env: {
+                abort: () => {
+                  console.error("WebAssembly load aborted.")
+                }
+              },
+            }).then((result) => {
+              console.info('Finished loading WebAssembly into the AudioWorkletProcessor.');
+              this.api = result.instance.exports;
+              this.port.postMessage("OK");
+            });
+            break;
+        }
+      };
+    }
+
+    process(inputs, outputs, parameters) {
+      if (this.api) {
+        const output = outputs[0];
+        for (let i = 0; i < output[0].length; i++) {
+          let out = this.api.dsp(this.t / globalThis.sampleRate);
+          output.forEach((channel) => {
+            channel[i] = out;
+          });
+          this.t++;
+        }
+      }
+      return true;
+    }
+  }
+  registerProcessor("dsp-processor", DSPProcessor);
+`;
+const dataURL = `data:text/javascript;base64,${btoa(workletCode)}`;
+const wasmPath = '/build/debug.wasm'
+
+import { instantiate } from "../build/debug.js";
+
+let ac, worklet, hz = 44100;
+
+const update = async () => {
+  ac = new AudioContext();
+  await ac.audioWorklet.addModule(dataURL);
+  worklet = new AudioWorkletNode(ac, "dsp-processor");
+  worklet.connect(ac.destination);
+  worklet.port.onmessage = (e) => {
+    if (e.data === "OK") {
+      console.log("worklet ready");
+    }
+  };
+  worklet.connect(ac.destination);
+  await ac.resume();
+  try {
+    const wasmResponse = await fetch(wasmPath);
+    const wasmBuffer = await wasmResponse.arrayBuffer()
+    worklet.port.postMessage({ webassembly: wasmBuffer });
+  } catch (err) {
+    console.error(err.message);
+  }
+}
+
+document.addEventListener("click", function initAudio() {
+  ac = new AudioContext();
+  update();
+  document.removeEventListener("click", initAudio);
+});
+
+// import { add } from "./build/release.js";
+// document.body.innerText = add(1, 2);
+
+// import { instantiate } from "../build/debug.js";
+
+// const wasmPath = '/build/debug.wasm'
+// const wasmResponse = await fetch(wasmPath);
+// const wasmBuffer = new Uint8Array(await wasmResponse.arrayBuffer());
+// const wasmArray = []
+// for (let i = 0; i < wasmBuffer.length; i++) {
+//   wasmArray.push(wasmBuffer[i])
+// }
+
+// // console.log(wasmArray)
+
+// const generateNodeCode = () => {
+//   return `
+//     class SimpleWasmProcessor extends AudioWorkletProcessor {
+//       constructor() {
+//         super();
+//         this.setup();
+//       }
+
+//       async setup() {
+//         console.log('setup')
+//         const wasmArray = JSON.parse("${JSON.stringify(wasmArray)}");
+//         const wasmBuffer = new ArrayBuffer(wasmArray.length);
+//         for (let i = 0; i < wasmArray.length; i++) {
+//           wasmBuffer[i] = wasmArray[i];
+//         }
+//         // const wasmModule = await WebAssembly.compile(wasmBuffer, {});
+//         // console.log(wasmModule)
+//         const { createParameters, parametersGet, parametersSet, processSignal } = await WebAssembly.instantiate(wasmBuffer, {
+//           /* imports */
+//         })
+//         // this.processSignal = processSignal;
+//         // console.log('processSignal', this.processSignal);
+//       }
+
+//       process(inputs, outputs, parameters) {
+//         if (!this.processSignal) return true;
+//         return this.processSignal(inputs, outputs, parameters);
+//       }
+
+//       static get parameterDescriptors() {
+//         return [];
+//       }
+//     }
+
+//     registerProcessor("simple-wasm-processor", SimpleWasmProcessor);
+//   `;
+// }
+
+// const code = generateNodeCode();
+// const url = window.URL.createObjectURL(
+//   new Blob(
+//     [ code ], 
+//     { type: 'text/javascript' }
+//   )
+// )
+// console.log(url)
+
+// window.addEventListener('click', async () => {
+//   const audioContext = new AudioContext();
+//   await audioContext.audioWorklet.addModule(url);
+//   const node = new AudioWorkletNode(
+//     audioContext,
+//     "simple-wasm-processor",
+//   );
+//   node.connect(audioContext.destination);
+// })
+</script>
+</head>
+<body></body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "assemblyscript-example",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests",
+    "asbuild:debug": "asc assembly/index.ts --target debug --bindings raw",
+    "asbuild:release": "asc assembly/index.ts --target release --bindings raw",
+    "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+    "start": "npx serve .",
+
+    "c:copy-files": "cp -r wasm2c build/ && cp main.c build/",
+    "c:build": "cd build && cc -o debug main.c debug.c wasm2c/wasm-rt-impl.c wasm2c/wasm-rt-mem-impl.c -Iwasm2c -lm"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "assemblyscript": "^0.27.31"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "import": "./build/release.js",
+      "types": "./build/release.d.ts"
+    }
+  }
+}
