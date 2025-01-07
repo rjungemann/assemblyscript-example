@@ -4,13 +4,18 @@
   "main": "index.js",
   "scripts": {
     "test": "node tests",
+
     "asbuild:debug": "asc assembly/index.ts --target debug --bindings raw",
     "asbuild:release": "asc assembly/index.ts --target release --bindings raw",
     "asbuild": "npm run asbuild:debug && npm run asbuild:release",
-    "start": "npx serve .",
+
+    "wasm2c": "cd build && wasm2c debug.wasm -o debug.c",
 
     "c:copy-files": "cp -r wasm2c build/ && cp main.c build/",
-    "c:build": "cd build && cc -o debug main.c debug.c wasm2c/wasm-rt-impl.c wasm2c/wasm-rt-mem-impl.c -Iwasm2c -lm"
+    
+    "c:build": "cd build && cc main.c debug.c wasm2c/wasm-rt-impl.c wasm2c/wasm-rt-mem-impl.c -Iwasm2c -lm -lpthread -I/opt/homebrew/Cellar/portaudio/19.7.0/include -L/opt/homebrew/Cellar/portaudio/19.7.0/lib -lportaudio -o debug",
+
+    "start": "npx serve ."
   },
   "author": "",
   "license": "ISC",

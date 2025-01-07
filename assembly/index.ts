@@ -21,8 +21,9 @@ export function hello(name: string): string {
 function saw(f: f32, t: f32): f32 {
   return (((f * t * 1.0) % 1.0) - 0.5) * 1.0;
 }
+
 export function dsp(t: f32): f32 {
-  return (saw(110, t) + saw(111, t))/4
+  return (saw(110, t) + saw(111, t)) / 4
 }
 
 export function createParameters(): Map<string, Float32Array> {
