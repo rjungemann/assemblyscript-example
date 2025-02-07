@@ -93,6 +93,8 @@ int main(int argc, char** argv) {
   ); /* A pointer passed to the callback */
   if( err != paNoError ) goto error;
 
+  w2c_debug_setup(&data.context);
+
   // Start stream
   err = Pa_StartStream( stream );
   if( err != paNoError ) goto error;
