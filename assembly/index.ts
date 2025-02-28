@@ -42,8 +42,8 @@ export function setup(): void {
 export function dsp(t: f32): f32 {
   const detunedSaws: f32 = saw(110, t) + saw(111, t)
   const lfo: f32 = tri(0.5, ramp(0.125, t));
-  const lfo2: f32 = tri(0.15, ramp(0.125, t)) * 0.7;
-  const filtered: f32 = lores2(lfo, lfo2, detunedSaws);
+  const lfo2: f32 = tri(0.01, ramp(0.125, t)) * 0.7;
+  const filtered: f32 = lores2(lfo, 0.7, detunedSaws);
   return filtered * 0.25;
 }
 
