@@ -9,6 +9,7 @@
     "wasm2c": "cd build && wasm2c debug.wasm -o debug.c",
     "c:copy-files": "cp -r wasm2c build/ && cp main.c build/",
     "c:build": "cd build && cc main.c debug.c wasm2c/wasm-rt-impl.c wasm2c/wasm-rt-mem-impl.c -Iwasm2c -lm -lpthread -I/opt/homebrew/Cellar/portaudio/19.7.0/include -L/opt/homebrew/Cellar/portaudio/19.7.0/lib -lportaudio -o debug",
+    "c:run": "./build/debug",
     "build": "npm run asbuild && npm run wasm2c && npm run c:copy-files && npm run c:build",
     "start": "npx serve .",
     "test": "node tests"
