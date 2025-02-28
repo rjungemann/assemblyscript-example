@@ -23,6 +23,7 @@ const workletCode = `
             }).then((result) => {
               console.info('Finished loading WebAssembly into the AudioWorkletProcessor.');
               this.api = result.instance.exports;
+              this.api.setup();
               this.port.postMessage("OK");
             });
             break;

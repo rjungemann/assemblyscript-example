@@ -1,6 +1,6 @@
 #include "stdio.h"
 #include "stdlib.h"
-#include "stdio.h"
+#include "limits.h"
 #include "portaudio.h"
 
 #include "debug.h"
@@ -93,12 +93,16 @@ int main(int argc, char** argv) {
   ); /* A pointer passed to the callback */
   if( err != paNoError ) goto error;
 
+  w2c_debug_setup(&data.context);
+
   // Start stream
   err = Pa_StartStream( stream );
   if( err != paNoError ) goto error;
 
-  // Sleep for 5 seconds.
-  Pa_Sleep(5 * 1000);
+  // // Sleep for 5 seconds.
+  // Pa_Sleep(5 * 1000);
+  // Sleep forever.
+  Pa_Sleep(LONG_MAX);
 
   // Stop stream
   err = Pa_StopStream( stream );

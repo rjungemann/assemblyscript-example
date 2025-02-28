@@ -18,14 +18,15 @@ cd assemblyscript-example
 
 npm install
 
-npm run build
+npm run c:all:debug
 
 # Or...
 
-npm run asbuild
-npm run wasm2c
+npm run asbuild:debug
+npm run wasm2c:debug
 npm run c:copy-files
-npm run c:build
+npm run c:build:debug
+npm run c:run:debug
 ```
 
 To run the server,
