@@ -5,6 +5,20 @@ const tau = pi * 2.0;
 const logtwo = 0.69314718055994528623;
 const logten = 2.302585092994;
 
+const samplerate = 44100;
+
+function baseLog(base: f32, y: f32): f32 {
+  return Math.log(y) / Math.log(base)
+}
+
+function atodb(amp: f32): f32 {
+  return 20.0 * baseLog(10.0, amp);
+}
+
+function dbtoa(db: f32): f32 {
+  return Math.pow(10.0, db / 20.0)
+}
+
 function scale(n: f32, a: f32, b: f32, x: f32, y: f32): f32 {
   return ((n - a) / (b - a)) * (x - y);
 }
@@ -16,7 +30,7 @@ function mtof(f: f32): f32 {
 }
 
 function ftom(f: f32): f32 {
-  return (f > 0.0 ? (Math.log(f / 440.0) / logtwo) * 12.0 + 69.0 : -1500.0);
+  return (f > 0.0 ? (baseLog(2.0, f / 440.0) / logtwo) * 12.0 + 69.0 : -1500.0);
 }
 
 function ramp(f: f32, t: f32): f32 {
@@ -67,6 +81,8 @@ function lores(buf: Array<f32>, f: f32, q: f32, input: f32): f32 {
 // Main
 // ----
 
+let delayI: i32 = 0
+const delayData: Array<f32> = new Array<f32>(i32(samplerate * 1.0))
 const filterData: Array<f32> = [0.0, 0.0]
 let prevSlope: f32 = 0.0
 let i: i32 = 0
@@ -114,6 +130,11 @@ export function dsp(t: f32): f32 {
   const amp: f32 = sinify(0.3, slope)
   const index: f32 = 0.35
   const val: f32 = twoOp(carrier, modulator, index * amp, ts) * amp * seqval
+  const delay = delayData[delayI % delayData.length]
+  const mixed: f32 = val * 0.25 + delay * 0.25
   prevSlope = slope
-  return val * 0.125
+  delayData[delayI % delayData.length] = mixed
+  delayI++
+
+  return mixed
 }
