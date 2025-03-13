@@ -29,7 +29,7 @@ export function dsp(t: f32): f32 {
   if (change.dsp(slope) < 0.0) tape.read()
   const carrier: f32 = mtof(45.0)
   const modulator: f32 = carrier * 2.0
-  const amp: f32 = sinify(0.3, slope)
+  const amp: f32 = sinify(0.3, 1.0 - slope)
   const index: f32 = 0.35
   const val: f32 = twoOp(carrier, modulator, index * amp, ts) * amp * tape.dsp()
   out1 += val * 0.5 + delay.dsp(val) * 0.5

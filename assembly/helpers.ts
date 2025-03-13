@@ -70,15 +70,22 @@ export function tilt(o: f32, t: f32): f32 {
   return f32(Math.pow(1.0 - t, exp))
 }
 
+// 0 is an even envelope
+// 0.8 is a prickly envelope
 export function sinify(o: f32, t: f32): f32 {
-  const k: f32 = f32(Math.pow(t, o))
+  const k: f32 = f32(Math.pow(t, 1.0 - o))
   const a: f32 = f32(Math.sin(pi * k))
   const b: f32 = f32(Math.cos(pi * k) + 1.0)
   return (k < 0.5) ? a : b
 }
 
+export function op(m: f32, index: f32, t: f32): f32 {
+  return sin(ramp(m, t)) * index
+}
+
 export function twoOp(c: f32, m: f32, index: f32, t: f32): f32 {
-  return sin(ramp(c + sin(ramp(m, t)) * index, t))
+  const modulator = op(m, index, t)
+  return op(c + modulator, 1.0, t)
 }
 
 // ---
