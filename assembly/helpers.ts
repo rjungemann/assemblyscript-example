@@ -1,29 +1,39 @@
-// -------
-// Helpers
-// -------
+// ---------
+// Constants
+// ---------
 
 export const pi = 3.1415926536
 export const tau = pi * 2.0
 export const logtwo = 0.69314718055994528623
 export const logten = 2.302585092994
 
-export const samplerate = 44100 // TODO: Allow this to be changed
+// -------------
+// Configuration
+// -------------
+
+export let samplerate: f32 = 44100.0
+
+export function getSampleRate(): f32 { return samplerate }
+export function setSampleRate(v: f32): void { samplerate = v }
+
+// -------
+// Helpers
+// -------
 
 export function baseLog(base: f32, y: f32): f32 {
   return f32(Math.log(y) / Math.log(base))
 }
 
-export function atodb(amp: f32): f32 {
-  return 20.0 * baseLog(10.0, amp)
-}
-
-export function dbtoa(db: f32): f32 {
-  return f32(Math.pow(10.0, db / 20.0))
-}
-
 export function scale(n: f32, a: f32, b: f32, x: f32, y: f32): f32 {
   return ((n - a) / (b - a)) * (x - y)
 }
+
+export function atodb(amp: f32): f32 { return 20.0 * baseLog(10.0, amp) }
+export function dbtoa(db: f32): f32 { return f32(Math.pow(10.0, db / 20.0)) }
+export function sampstoms(samps: f32): f32 { return samps / samplerate }
+export function mstosamps(ms: f32): f32 { return ms * samplerate }
+export function bpmtoms(bpm: f32): f32 { return 60000.0 / bpm }
+export function mstobpm(ms: f32): f32 { return (1.0 / ms) * 60000.0 }
 
 export function mtof(f: f32): f32 {
   if (f <= -1500.0) return 0.0;
@@ -71,26 +81,59 @@ export function twoOp(c: f32, m: f32, index: f32, t: f32): f32 {
   return sin(ramp(c + sin(ramp(m, t)) * index, t))
 }
 
+// ---
+// Sah
+// ---
+
+class Sah {
+  current: f32 = 0.0
+
+  dsp(in1: f32, gate: f32): f32 {
+    if (gate > 0.5) this.current = in1
+    return this.current
+  }
+}
+
+export function createSah(): Sah {
+  return new Sah()
+}
+
 // -------
 // History
 // -------
 
 class History {
-  previous: f32
+  previous: f32 = 0.0
 
-  constructor() {
-    this.previous = 0
-  }
-
-  dsp(t: f32, in1: f32): f32 {
-    const value: f32 = previous
-    previous = in1
+  dsp(in1: f32): f32 {
+    const value: f32 = this.previous
+    this.previous = in1
     return value
   }
 }
 
 export function createHistory(): History {
   return new History()
+}
+
+// ------
+// Change
+// ------
+
+class Change {
+  previous: f32 = 0.0
+
+  dsp(in1: f32): f32 {
+    const val = this.previous
+    this.previous = in1
+    if (in1 > val) return 1.0
+    if (in1 < val) return -1.0
+    return 0
+  }
+}
+
+export function createChange(): Change {
+  return new Change()
 }
 
 // -------
@@ -106,11 +149,11 @@ class OnePole {
     this.state = 0
   }
 
-  dsp(t: f32, in1: f32, cutoff: f32): f32 {
-    const g = Math.tan((twopi * cutoff) / samplerate)
+  dsp(in1: f32): f32 {
+    const g = Math.tan((tau * this.cutoff) / samplerate)
     const gi = 1.0 / (1.0 + g)
-    const lp = (g * in1 + state) * gi
-    state = g * (in1 - lp) + lp
+    const lp = (g * in1 + this.state) * gi
+    this.state = g * (in1 - lp) + lp
     // // TODO: Return hipass somehow also
     // const hp = xin - lp
     // return hp
@@ -119,6 +162,10 @@ class OnePole {
 
   getCutoff(): f32 { return this.cutoff }
   setCutoff(c: f32): void { this.cutoff = c }
+}
+
+export function createOnePole(): OnePole {
+  return new OnePole()
 }
 
 // -------
@@ -138,7 +185,7 @@ class Allpass {
     this.delayBuffer = new Array<f32>(size)
   }
 
-  dsp(t: f32, in1: f32): f32 {
+  dsp(in1: f32): f32 {
     // TODO: Interpolation, ideally cubic
     const readI = (this.delayBuffer.length + this.delayI - Math.round(this.time)) % this.delayBuffer.length
     const readValue = this.delayBuffer[readI]
@@ -159,6 +206,10 @@ class Allpass {
   setGain(g: f32): void { this.gain = g }
 }
 
+export function createAllpass(size: f32): Allpass {
+  return new Allpass(size)
+}
+
 // -----
 // Lores
 // -----
@@ -174,7 +225,7 @@ class Lores {
     this.delayData = [0.0, 0.0]
   }
 
-  dsp(t: f32, in1: f32): f32 {
+  dsp(in1: f32): f32 {
     const f2 = f32(Math.min(this.cutoff, 0.999))
     const fb: f32 = this.q + this.q / (1.0 - f2)
     this.delayData[0] = this.delayData[0] + f2 * (in1 - this.delayData[0] + fb * (this.delayData[0] - this.delayData[1]))
@@ -192,6 +243,37 @@ export function createLores(): Lores {
   return new Lores()
 }
 
+// -----------
+// SimpleDelay
+// -----------
+
+class SimpleDelay {
+  delayI: i32
+  delayData: Array<f32>
+  currentTime: i32
+
+  constructor(maxTime: i32) {
+    this.delayI = 0
+    this.delayData = new Array<f32>(maxTime)
+    this.currentTime = maxTime
+  }
+
+  dsp(in1: f32): f32 {
+    // TODO: Optional interpolation, maybe separate classes? Cubic is ideal
+    const value = this.delayData[this.delayI]
+    this.delayData[this.delayI] = in1
+    this.delayI = (this.delayI + 1) % this.currentTime
+    return value
+  }
+
+  getCurrentTime(): f32 { return this.currentTime }
+  setCurrentTime(v: f32): void { this.currentTime = v }
+}
+
+export function createSimpleDelay(maxTime: i32): SimpleDelay {
+  return new SimpleDelay(maxTime)
+}
+
 // -----
 // Delay
 // -----
@@ -200,24 +282,75 @@ class Delay {
   delayI: i32
   delayData: Array<f32>
   feedbackAmount: f32
+  currentTime: i32
 
-  constructor(size: i32) {
+  constructor(maxTime: i32) {
     this.delayI = 0
-    this.delayData = new Array<f32>(size)
+    this.delayData = new Array<f32>(maxTime)
     this.feedbackAmount = 0.25
+    this.currentTime = maxTime
   }
 
-  dsp(t: f32, in1: f32): f32 {
+  dsp(in1: f32): f32 {
     // TODO: Optional interpolation, maybe separate classes? Cubic is ideal
     const value = this.delayData[this.delayI]
     this.delayData[this.delayI] = in1 + value * this.feedbackAmount
-    this.delayI = (this.delayI + 1) % this.delayData.length
+    this.delayI = (this.delayI + 1) % this.currentTime
     return value
+  }
+
+  getFeedbackAmount(): f32 { return this.feedbackAmount }
+  setFeedbackAmount(v: f32): void { this.feedbackAmount = v }
+  getCurrentTime(): f32 { return this.currentTime }
+  setCurrentTime(v: f32): void { this.currentTime = v }
+}
+
+export function createDelay(maxTime: i32): Delay {
+  return new Delay(maxTime)
+}
+
+// ------------------
+// InterpolatingDelay
+// ------------------
+
+class InterpolatingDelay {
+  history: History = new History()
+  isA: boolean = true
+  currentTime: f32
+  delayA: Delay
+  delayB: Delay
+
+  constructor(maxTime: f32) {
+    this.currentTime = maxTime
+    this.delayA = new Delay(maxTime)
+    this.delayB = new Delay(maxTime)
+  }
+
+  dsp(in1: f32): f32 {
+    const h = this.history.dsp(in1)
+    if (in1 > 0.0 && h < 0.0 || in1 < 0.0 && h > 0.0) {
+      this.isA = !this.isA
+      if (this.isA) {
+        this.delayA.setCurrentTime(this.currentTime)
+      } else {
+        this.delayB.setCurrentTime(this.currentTime)
+      }
+    }
+    if (this.isA) {
+      return this.delayA.dsp(in1)
+    } else {
+      return this.delayB.dsp(in1)
+    }
+  }
+
+  getCurrentTime(): f32 { return this.currentTime }
+  setCurrentTime(v: f32): void {
+    this.currentTime = v
   }
 }
 
-export function createDelay(size: i32): Delay {
-  return new Delay(size)
+export function createInterpolatingDelay(maxTime: f32): InterpolatingDelay {
+  return new InterpolatingDelay(maxTime)
 }
 
 // ----
@@ -249,7 +382,7 @@ class Tape {
     this.writeI = 0
   }
 
-  dsp(t: f32): f32 {
+  dsp(): f32 {
     return this.tapeData[this.readI]
   }
 }
