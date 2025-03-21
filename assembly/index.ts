@@ -1,9 +1,34 @@
-import { createChange, createDelay, createLores, createTape, mtof, ramp, saw, sinify, tilt, twoOp, tri } from './helpers'
+import { createDelay, Delay, mstosamps, createChange, createLores, createTape, mtof, ramp, saw, sinify, tilt, twoOp, tri } from './helpers'
 
 const delay = createDelay(44100)
 const filter = createLores()
 const tape = createTape([1.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 0.0])
 const change = createChange()
+
+class Diffuser {
+  time: f32
+  delay: Delay
+  previous: f32 = 0.0
+
+  constructor(time: f32) {
+    this.time = time
+    this.delay = createDelay(mstosamps(this.time))
+  }
+
+  dsp(in1: f32, in2: f32): f32 {
+    const subtracted = in1 - this.previous
+    const delay = this.delay.dsp(subtracted)
+    const product = subtracted * in2
+    const sum = product + delay
+    const postDelay = delay * in2
+    this.previous = postDelay
+    return sum
+  }
+}
+
+export function createDiffuser(time: f32): Diffuser {
+  return new Diffuser(time)
+}
 
 export function setup(): void {
 }

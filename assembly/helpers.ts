@@ -92,7 +92,7 @@ export function twoOp(c: f32, m: f32, index: f32, t: f32): f32 {
 // Sah
 // ---
 
-class Sah {
+export class Sah {
   current: f32 = 0.0
 
   dsp(in1: f32, gate: f32): f32 {
@@ -109,7 +109,7 @@ export function createSah(): Sah {
 // History
 // -------
 
-class History {
+export class History {
   previous: f32 = 0.0
 
   dsp(in1: f32): f32 {
@@ -127,7 +127,7 @@ export function createHistory(): History {
 // Change
 // ------
 
-class Change {
+export class Change {
   previous: f32 = 0.0
 
   dsp(in1: f32): f32 {
@@ -147,7 +147,7 @@ export function createChange(): Change {
 // OnePole
 // -------
 
-class OnePole {
+export class OnePole {
   cutoff: f32
   state: f32
 
@@ -179,7 +179,7 @@ export function createOnePole(): OnePole {
 // Allpass
 // -------
 
-class Allpass {
+export class Allpass {
   time: f32
   gain: f32
   delayI: i32
@@ -221,7 +221,7 @@ export function createAllpass(size: f32): Allpass {
 // Lores
 // -----
 
-class Lores {
+export class Lores {
   cutoff: f32
   q: f32
   delayData: Array<f32>
@@ -254,7 +254,7 @@ export function createLores(): Lores {
 // SimpleDelay
 // -----------
 
-class SimpleDelay {
+export class SimpleDelay {
   delayI: i32
   delayData: Array<f32>
   currentTime: i32
@@ -285,7 +285,7 @@ export function createSimpleDelay(maxTime: i32): SimpleDelay {
 // Delay
 // -----
 
-class Delay {
+export class Delay {
   delayI: i32
   delayData: Array<f32>
   feedbackAmount: f32
@@ -316,55 +316,11 @@ export function createDelay(maxTime: i32): Delay {
   return new Delay(maxTime)
 }
 
-// ------------------
-// InterpolatingDelay
-// ------------------
-
-class InterpolatingDelay {
-  history: History = new History()
-  isA: boolean = true
-  currentTime: f32
-  delayA: Delay
-  delayB: Delay
-
-  constructor(maxTime: f32) {
-    this.currentTime = maxTime
-    this.delayA = new Delay(maxTime)
-    this.delayB = new Delay(maxTime)
-  }
-
-  dsp(in1: f32): f32 {
-    const h = this.history.dsp(in1)
-    if (in1 > 0.0 && h < 0.0 || in1 < 0.0 && h > 0.0) {
-      this.isA = !this.isA
-      if (this.isA) {
-        this.delayA.setCurrentTime(this.currentTime)
-      } else {
-        this.delayB.setCurrentTime(this.currentTime)
-      }
-    }
-    if (this.isA) {
-      return this.delayA.dsp(in1)
-    } else {
-      return this.delayB.dsp(in1)
-    }
-  }
-
-  getCurrentTime(): f32 { return this.currentTime }
-  setCurrentTime(v: f32): void {
-    this.currentTime = v
-  }
-}
-
-export function createInterpolatingDelay(maxTime: f32): InterpolatingDelay {
-  return new InterpolatingDelay(maxTime)
-}
-
 // ----
 // Tape
 // ----
 
-class Tape {
+export class Tape {
   readI: i32
   writeI: i32
   tapeData: Array<f32>
